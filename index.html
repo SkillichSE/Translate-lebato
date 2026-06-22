@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Лебато Броза — Переводчик</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <span class="topbar__logo">Лебато Броза</span>
+</header>
+
+<div class="ticker">
+  <div class="ticker__track">
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+    <span>СЛАВА АРУТУ</span><span>★</span>
+  </div>
+</div>
+
+<main>
+
+  <section id="view-translate" class="view view--active">
+
+    <div class="card card--translator">
+      <div class="langbar">
+        <span class="langbar__lang langbar__lang--active" id="labelSrc">Русский</span>
+        <button class="langbar__swap" id="swapBtn" title="Поменять направление">⇄</button>
+        <span class="langbar__lang langbar__lang--active" id="labelDst">Лебато Броза</span>
+      </div>
+
+      <div class="panels">
+        <div class="pane">
+          <textarea id="input" class="pane__text" placeholder="Введите текст" autofocus></textarea>
+          <div class="pane__footer">
+            <button class="iconbtn" id="clearBtn">✕</button>
+            <span class="char-count" id="charCount"></span>
+          </div>
+        </div>
+
+        <div class="pane-divider"></div>
+
+        <div class="pane pane--output">
+          <div class="pane__text pane__text--output" id="output">
+            <span class="placeholder">Перевод</span>
+          </div>
+          <div class="pane__footer">
+            <button class="iconbtn" id="copyBtn" title="Копировать">⧉</button>
+            <span class="stats-line" id="statsLine"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint">Кликните по слову в переводе чтобы добавить в карточки · Серые слова не в базе</p>
+
+    <div class="card card--examples" id="examplesCard" hidden>
+      <div class="card__head">Примеры фраз</div>
+      <div id="examplesList"></div>
+    </div>
+
+    <div class="card card--flash" id="flashCard" hidden>
+      <div class="card__head">
+        <span>Карточки</span>
+        <span class="flash__count" id="flashCount"></span>
+      </div>
+      <div class="flash__body" id="flashBody"></div>
+      <div class="flash__controls">
+        <button class="btn btn--ghost" id="flashFlip">Показать перевод</button>
+        <button class="btn btn--ghost" id="flashNext">Следующая →</button>
+        <button class="btn btn--danger" id="flashRemove">Убрать</button>
+      </div>
+    </div>
+
+  </section>
+
+  <section id="view-dict" class="view">
+
+    <div class="dict-toolbar">
+      <input id="search" class="field field--search" placeholder="Поиск по словарю…">
+      <div class="filters">
+        <button class="chip chip--active" data-filter="all">Все <span id="countAll"></span></button>
+        <button class="chip" data-filter="saved">⭐ Изучаю <span id="countSaved"></span></button>
+      </div>
+    </div>
+
+    <div class="card dict-table" id="dictList"></div>
+
+  </section>
+
+</main>
+
+<nav class="bottomnav">
+  <button class="bottomnav__tab bottomnav__tab--active" data-view="translate">
+    <span class="bottomnav__icon">⇄</span>
+    <span>Переводчик</span>
+  </button>
+  <button class="bottomnav__tab" data-view="dict">
+    <span class="bottomnav__icon">📖</span>
+    <span>Словарь</span>
+  </button>
+</nav>
+
+<div class="credit">Build by Ski's Team</div>
+
+<script src="dictionary.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
