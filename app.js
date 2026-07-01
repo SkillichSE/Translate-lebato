@@ -1,28 +1,59 @@
 const STORAGE_KEY = "lebato-dict-v1";
+const REMOVED_KEY = "lebato-removed-v1";
+const CUSTOM_KEY = "lebato-custom-v1";
 const SAVED_KEY = "lebato-saved-v1";
 const HISTORY_KEY = "lebato-history-v1";
 
 let dict = {};
+let removedKeys = {};
+let customDict = {};
 let saved = {};
 let history = [];
 let direction = "ru-lb";
 
-function loadDict() {
-  let stored = null;
-  try { const r = localStorage.getItem(STORAGE_KEY); if (r) stored = JSON.parse(r); } catch(e) {}
-  if (stored) {
-    dict = stored;
-    let changed = false;
-    for (const k in baseDict) { if (!(k in dict)) { dict[k] = baseDict[k]; changed = true; } }
-    if (changed) persistDict();
-  } else {
-    dict = { ...baseDict };
-    persistDict();
+function migrateOldStorage() {
+  let old = null;
+  try { const r = localStorage.getItem(STORAGE_KEY); if (r) old = JSON.parse(r); } catch (e) {}
+  if (!old) return;
+
+  const removed = {};
+  const custom = {};
+  for (const k in baseDict) { if (!(k in old)) removed[k] = true; }
+  for (const k in old) {
+    if (!(k in baseDict)) custom[k] = old[k];
   }
+  try {
+    localStorage.setItem(REMOVED_KEY, JSON.stringify(removed));
+    localStorage.setItem(CUSTOM_KEY, JSON.stringify(custom));
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (e) {}
+}
+
+function loadDict() {
+  migrateOldStorage();
+  try { const r = localStorage.getItem(REMOVED_KEY); removedKeys = r ? JSON.parse(r) : {}; } catch (e) { removedKeys = {}; }
+  try { const r = localStorage.getItem(CUSTOM_KEY); customDict = r ? JSON.parse(r) : {}; } catch (e) { customDict = {}; }
+  rebuildDict();
+}
+
+function rebuildDict() {
+  dict = {};
+  for (const k in baseDict) { if (!removedKeys[k]) dict[k] = baseDict[k]; }
+  for (const k in customDict) { if (!removedKeys[k]) dict[k] = customDict[k]; }
 }
 
 function persistDict() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(dict)); } catch(e) {}
+  try {
+    localStorage.setItem(REMOVED_KEY, JSON.stringify(removedKeys));
+    localStorage.setItem(CUSTOM_KEY, JSON.stringify(customDict));
+  } catch (e) {}
+}
+
+function removeWord(key) {
+  if (key in baseDict) removedKeys[key] = true;
+  delete customDict[key];
+  delete dict[key];
+  persistDict();
 }
 
 function loadSaved() {
@@ -51,7 +82,8 @@ function normalize(word) {
 }
 
 function escapeHtml(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 function escapeRegExp(str) {
@@ -118,20 +150,48 @@ function buildTokens(text) {
 
 function buildTokensReverse(text) {
   const rev = buildReverseDict();
-  const tokens = [];
-  for (const part of text.split(/(\s+)/)) {
-    if (part === "" || /^\s+$/.test(part)) { tokens.push({ kind: "gap", raw: part }); continue; }
-    const m = part.match(/^([^a-zа-яё]*)([\wа-яёa-z-]+)([^a-zа-яё]*)$/i);
-    if (!m) { tokens.push({ kind: "gap", raw: part }); continue; }
-    const [, prefix, word, suffix] = m;
-    const key = word.toLowerCase();
-    if (rev[key]) {
-      let translated = rev[key];
-      if (word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase())
-        translated = translated.charAt(0).toUpperCase() + translated.slice(1);
-      tokens.push({ kind: "word", ru: translated, lb: key, raw: prefix + word + suffix, prefix, suffix });
+  const lbPhrases = Object.keys(rev).filter(k => k.includes(" ")).sort((a, b) => b.length - a.length);
+
+  let remaining = text;
+  const segments = [];
+
+  while (remaining.length > 0) {
+    let matchedPhrase = null, matchedIndex = -1;
+    const lr = remaining.toLowerCase();
+    for (const phrase of lbPhrases) {
+      const idx = lr.indexOf(phrase);
+      if (idx !== -1 && (matchedIndex === -1 || idx < matchedIndex)) { matchedPhrase = phrase; matchedIndex = idx; }
+    }
+    if (matchedPhrase !== null) {
+      if (matchedIndex > 0) segments.push({ text: remaining.slice(0, matchedIndex), translated: null });
+      segments.push({ text: remaining.slice(matchedIndex, matchedIndex + matchedPhrase.length), translated: rev[matchedPhrase], lb: matchedPhrase });
+      remaining = remaining.slice(matchedIndex + matchedPhrase.length);
     } else {
-      tokens.push({ kind: "unknown", raw: prefix + word + suffix, prefix, suffix, word });
+      segments.push({ text: remaining, translated: null });
+      remaining = "";
+    }
+  }
+
+  const tokens = [];
+  for (const seg of segments) {
+    if (seg.translated !== null) {
+      tokens.push({ kind: "word", ru: seg.translated, lb: seg.lb, raw: seg.text });
+      continue;
+    }
+    for (const part of seg.text.split(/(\s+)/)) {
+      if (part === "" || /^\s+$/.test(part)) { tokens.push({ kind: "gap", raw: part }); continue; }
+      const m = part.match(/^([^a-zа-яё]*)([\wа-яёa-z-]+)([^a-zа-яё]*)$/i);
+      if (!m) { tokens.push({ kind: "gap", raw: part }); continue; }
+      const [, prefix, word, suffix] = m;
+      const key = word.toLowerCase();
+      if (rev[key]) {
+        let translated = rev[key];
+        if (word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase())
+          translated = translated.charAt(0).toUpperCase() + translated.slice(1);
+        tokens.push({ kind: "word", ru: translated, lb: key, raw: prefix + word + suffix, prefix, suffix });
+      } else {
+        tokens.push({ kind: "unknown", raw: prefix + word + suffix, prefix, suffix, word });
+      }
     }
   }
   return tokens;
@@ -394,8 +454,8 @@ function renderDictList() {
   dictListEl.querySelectorAll(".dict-row__remove").forEach(btn => {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-key");
-      delete dict[key]; delete saved[key];
-      persistDict(); persistSaved();
+      removeWord(key); delete saved[key];
+      persistSaved();
       renderDictList(); renderTranslation(); renderFlashcards();
     });
   });
@@ -411,6 +471,42 @@ function renderDictList() {
 
 
 searchEl.addEventListener("input", renderDictList);
+
+const dictUpdatedEl = document.getElementById("dictUpdated");
+
+async function loadLastUpdated() {
+  if (!dictUpdatedEl) return;
+  const cacheKey = "lebato_last_updated_cache";
+  const cacheTtl = 1000 * 60 * 30;
+
+  try {
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+    if (cached && Date.now() - cached.fetchedAt < cacheTtl) {
+      renderLastUpdated(cached.date);
+      return;
+    }
+  } catch (e) {}
+
+  try {
+    const res = await fetch("https://api.github.com/repos/SkillichSE/Translate-lebato/commits?per_page=1");
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+    const dateStr = data?.[0]?.commit?.committer?.date;
+    if (!dateStr) throw new Error("no date");
+    localStorage.setItem(cacheKey, JSON.stringify({ date: dateStr, fetchedAt: Date.now() }));
+    renderLastUpdated(dateStr);
+  } catch (e) {
+    dictUpdatedEl.textContent = "";
+  }
+}
+
+function renderLastUpdated(dateStr) {
+  const date = new Date(dateStr);
+  const formatted = date.toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
+  dictUpdatedEl.textContent = `Обновлено: ${formatted}`;
+}
+
+loadLastUpdated();
 
 const navTabs = document.querySelectorAll(".bottomnav__tab");
 const views = {
