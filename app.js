@@ -269,11 +269,11 @@ function attachWordHandlers() {
 swapBtn.addEventListener("click", () => {
   direction = direction === "ru-lb" ? "lb-ru" : "ru-lb";
   if (direction === "lb-ru") {
-    labelSrc.textContent = "ЛЕБАТО БРОЗА";
-    labelDst.textContent = "РУССКИЙ";
+    labelSrc.textContent = "Лебато Броза";
+    labelDst.textContent = "Русский";
   } else {
-    labelSrc.textContent = "РУССКИЙ";
-    labelDst.textContent = "ЛЕБАТО БРОЗА";
+    labelSrc.textContent = "Русский";
+    labelDst.textContent = "Лебато Броза";
   }
   const cur = inputEl.value;
   const translated = outputEl.innerText;
@@ -431,7 +431,7 @@ function renderDictList() {
 
   if (entries.length === 0) {
     dictListEl.innerHTML = `<div class="dict-empty">${
-      currentFilter === "saved" ? "НЕТ СОХРАНЁННЫХ СЛОВ — кликай по словам в переводе" : "НИЧЕГО НЕ НАЙДЕНО"
+      currentFilter === "saved" ? "Нет сохранённых слов — кликай по словам в переводе" : "Ничего не найдено"
     }</div>`;
     return;
   }
